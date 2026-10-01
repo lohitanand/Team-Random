@@ -1,0 +1,37 @@
+# Secrets: only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Generated data, database and model artifacts
+data/
+*.db
+*.sqlite
+*.parquet
+*.joblib
+*.pkl
+*.lgb
+models/
+artifacts/
+
+# Frontend
+node_modules/
+dist/
+.vite/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

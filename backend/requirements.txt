@@ -1,0 +1,33 @@
+# Pinned versions verified on Python 3.13 (Windows). Install from repo root:
+#   pip install -r backend\requirements.txt
+#
+# CPU-only PyTorch (small download) for the multilingual text model.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.0+cpu
+sentence-transformers==6.1.0
+
+# API
+fastapi==0.142.1
+uvicorn==0.54.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+SQLAlchemy==2.1.1
+httpx==0.28.1
+
+# Data
+pandas==3.0.6
+numpy==2.5.3
+pyarrow==25.0.1
+Faker==40.40.0
+PyYAML==6.0.3
+
+# ML
+lightgbm==4.7.0
+shap==0.52.0
+scikit-learn==1.9.1
+
+# Jobs
+APScheduler==3.11.3
+
+# Tests
+pytest==9.1.1

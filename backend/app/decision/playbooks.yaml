@@ -1,0 +1,175 @@
+# Approved recovery playbooks. This file is the ONLY source of actions (CLAUDE.md §2.4).
+# Nothing - LLM or agent - may invent offers, discounts, refunds or actions outside it.
+#
+# Selection is deterministic: for a friction type, the first action whose `when` matches wins.
+#   when.rule_any    - any of these rule flags fired
+#   when.theme_any   - any of these text themes present
+#   when.packet_type - session | aggregate
+# customer actions also match on `moment` (in_session | post_session | post_purchase).
+# allows_terms: money/offer words a message for this action may contain (policy guardrail).
+
+version: 1
+
+frictions:
+  unclear_product_info:
+    customer_actions:
+      - {id: fit_recommendation, moment: in_session, channel: in_app, auto_allowed: true, template_id: info_fit,
+         description: "Offer a fit recommendation from the product's measurements and reviews",
+         when: {rule_any: [size_chart_x3]}}
+      - {id: comparison_table, moment: in_session, channel: in_app, auto_allowed: true, template_id: info_compare,
+         description: "Show a side-by-side comparison of the products being compared",
+         when: {rule_any: [pdp_compare_loop_x2]}}
+      - {id: product_qa_assist, moment: in_session, channel: in_app, auto_allowed: true, template_id: info_qa,
+         description: "Open the product Q&A assistant that answers from specs and reviews"}
+      - {id: product_info_followup, moment: post_session, channel: email, auto_allowed: true, template_id: info_followup,
+         description: "Send the full specification sheet and size guide for the viewed product"}
+      - {id: easy_return_help, moment: post_purchase, channel: whatsapp, auto_allowed: false, template_id: info_return,
+         description: "Help the customer with an easy return or exchange", allows_terms: [return, exchange]}
+    team_actions:
+      - {id: audit_flagged_listings, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Audit the flagged product listings and add the missing size chart / attributes",
+         when: {packet_type: aggregate}}
+      - {id: fix_product_content, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Add the missing attributes, measurements or size chart to the product page"}
+
+  delivery_uncertainty:
+    customer_actions:
+      - {id: show_arrives_by_date, moment: in_session, channel: in_app, auto_allowed: true, template_id: delivery_date,
+         description: "Show a clear arrives-by date and the faster delivery option"}
+      - {id: delivery_options_followup, moment: post_session, channel: push, auto_allowed: true, template_id: delivery_followup,
+         description: "Share the delivery date and faster delivery options for the saved cart"}
+    team_actions:
+      - {id: review_courier_performance, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Review courier performance for the affected cities and reassign shipments",
+         when: {packet_type: aggregate}}
+      - {id: show_fees_and_eta_early, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Show delivery fee and ETA on the product page before checkout"}
+
+  payment_failure:
+    customer_actions:
+      - {id: refund_reassurance, moment: post_session, channel: whatsapp, auto_allowed: false, template_id: pay_refund,
+         description: "Confirm that any debited amount is reversed automatically and the cart is saved",
+         allows_terms: [refund, reversed, reversal], when: {rule_any: [money_deducted_failed_payment]}}
+      - {id: alternate_method_nudge, moment: in_session, channel: in_app, auto_allowed: true, template_id: pay_alternate,
+         description: "Suggest another payment method; the cart is saved"}
+      - {id: retry_payment_link, moment: post_session, channel: whatsapp, auto_allowed: true, template_id: pay_retry,
+         description: "Send a one-tap link to retry payment with another method"}
+    team_actions:
+      - {id: check_or_switch_gateway, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Check gateway health and route payment traffic away from the failing gateway",
+         when: {packet_type: aggregate}}
+      - {id: review_payment_errors, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Review payment error codes for this gateway and method"}
+
+  poor_recommendations:
+    customer_actions:
+      - {id: in_stock_alternatives, moment: in_session, channel: in_app, auto_allowed: true, template_id: recs_instock,
+         description: "Show similar in-stock items based on what the customer viewed this session"}
+      - {id: personalised_picks_followup, moment: post_session, channel: email, auto_allowed: true, template_id: recs_followup,
+         description: "Send picks based on this session's searches and views"}
+    team_actions:
+      - {id: tune_recommendations, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Review recommendation slots with no clicks and search terms with no results"}
+
+  post_purchase_concern:
+    customer_actions:
+      - {id: refund_status_update, moment: post_purchase, channel: email, auto_allowed: false, template_id: pp_refund,
+         description: "Send the current refund status", allows_terms: [refund],
+         when: {rule_any: [refund_pending_check]}}
+      - {id: proactive_delay_update, moment: post_purchase, channel: whatsapp, auto_allowed: true, template_id: pp_delay,
+         description: "Send a proactive update with the latest delivery status",
+         when: {rule_any: [tracking_view_x3, delayed_order_viewed]}}
+      - {id: assisted_support_reply, moment: post_purchase, channel: whatsapp, auto_allowed: false, template_id: pp_support,
+         description: "Customer service replies with an AI-drafted, human-approved message"}
+    team_actions:
+      - {id: escalate_courier_delays, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Escalate delayed shipments with the courier and notify affected customers",
+         when: {packet_type: aggregate}}
+      - {id: review_order_issue, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Review the order and reply to the customer"}
+
+  price_shock:
+    customer_actions:
+      - {id: show_cost_breakdown, moment: in_session, channel: in_app, auto_allowed: true, template_id: price_breakdown,
+         description: "Show the full cost breakdown and the free-shipping threshold", allows_terms: [free shipping]}
+      - {id: saved_cart_reminder, moment: post_session, channel: email, auto_allowed: true, template_id: price_reminder,
+         description: "Remind the customer about the saved cart with the full price shown upfront"}
+    team_actions:
+      - {id: show_full_cost_early, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Show all fees on the product and cart pages instead of only at checkout"}
+
+  coupon_failure:
+    customer_actions:
+      - {id: explain_coupon_rejection, moment: in_session, channel: in_app, auto_allowed: true, template_id: coupon_explain,
+         description: "Explain why the coupon was rejected and where to see currently valid coupons", allows_terms: [coupon]}
+      - {id: valid_coupon_followup, moment: post_session, channel: email, auto_allowed: false, template_id: coupon_followup,
+         description: "Share the currently valid coupons for the saved cart (needs approval)", allows_terms: [coupon]}
+    team_actions:
+      - {id: fix_coupon_rules, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Review coupon validity rules and rejection messages"}
+
+  login_otp_issue:
+    customer_actions:
+      - {id: alternate_otp_channel, moment: in_session, channel: in_app, auto_allowed: true, template_id: login_channel,
+         description: "Offer the OTP by WhatsApp or email instead of SMS", when: {rule_any: [otp_resend_x2, otp_failed]}}
+      - {id: offer_guest_checkout, moment: in_session, channel: in_app, auto_allowed: true, template_id: login_guest,
+         description: "Offer guest checkout so the customer can continue without logging in"}
+      - {id: login_help_followup, moment: post_session, channel: email, auto_allowed: true, template_id: login_followup,
+         description: "Send a login help link with guest checkout for the saved cart"}
+      - {id: login_help_tracking, moment: post_purchase, channel: email, auto_allowed: true, template_id: login_followup,
+         description: "Send a login help link to track the order"}
+    team_actions:
+      - {id: check_otp_delivery, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Check OTP delivery rates with the SMS provider"}
+
+  out_of_stock:
+    customer_actions:
+      - {id: similar_in_stock, moment: in_session, channel: in_app, auto_allowed: true, template_id: oos_similar,
+         description: "Show similar items that are in stock in the customer's size"}
+      - {id: back_in_stock_alert, moment: post_session, channel: push, auto_allowed: true, template_id: oos_alert,
+         description: "Alert the customer when the item is back in stock"}
+    team_actions:
+      - {id: restock_popular_sizes, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Restock popular sizes and hide unavailable sizes in recommendations"}
+
+  technical_glitch:
+    customer_actions:
+      - {id: retry_fallback_page, moment: in_session, channel: in_app, auto_allowed: true, template_id: tech_retry,
+         description: "Offer a reload / lightweight fallback page; the cart is saved"}
+      - {id: saved_cart_followup, moment: post_session, channel: email, auto_allowed: true, template_id: tech_followup,
+         description: "Let the customer know the issue is being fixed and the cart is saved"}
+      - {id: tracking_help, moment: post_purchase, channel: email, auto_allowed: true, template_id: tech_followup,
+         description: "Send the order status directly while the tracking page is fixed"}
+    team_actions:
+      - {id: raise_tech_incident, channel: task, auto_allowed: false, template_id: team_generic,
+         description: "Raise a tech incident with the error details and the affected device / app version"}
+
+# Deterministic message templates. Placeholders are filled only from evidence packet fields.
+templates:
+  info_fit: "Not sure about the size of the {product}? Here is a fit recommendation based on its measurements and customer reviews."
+  info_compare: "Comparing options? Here is a side-by-side view of the {product} and similar items to help you decide."
+  info_qa: "Have a question about the {product}? Ask our product assistant - it answers from the specifications and reviews."
+  info_followup: "Still deciding on the {product}? Here are the full specifications and size guide. Your cart is saved."
+  info_return: "Sorry the {product} was not what you expected. We can help you with an easy return or exchange."
+  delivery_date: "Your {product} can arrive by the date shown at checkout, and a faster delivery option is available."
+  delivery_followup: "Your cart is saved. Check the delivery date and faster delivery options for your {product}."
+  pay_refund: "Your payment did not go through. If any amount was debited, it is reversed to your account automatically. Your cart is saved."
+  pay_alternate: "Payment by {method} is not going through right now. You can pay another way - your cart is saved."
+  pay_retry: "Your payment did not complete. Your cart is saved - tap to try again with another payment method."
+  recs_instock: "Here are similar items in stock, based on what you looked at today."
+  recs_followup: "We picked a few items based on what you searched for. Take a look when you have a moment."
+  pp_refund: "Here is the latest status of your refund. We will keep you updated."
+  pp_delay: "Here is the latest update on your order. We are sorry for the wait and are keeping an eye on it."
+  pp_support: "Thanks for reaching out. Our team has looked into your order and will help you right away."
+  price_breakdown: "Here is the full cost breakdown for your cart, including all charges and the free shipping threshold."
+  price_reminder: "Your cart is saved. The full price, including all charges, is shown upfront."
+  coupon_explain: "That coupon could not be applied to this cart. Here is why, and where to see the coupons that are valid right now."
+  coupon_followup: "Your cart is saved. Here are the coupons that are valid for it right now."
+  login_channel: "Not getting the OTP? We can send it by WhatsApp or email instead."
+  login_guest: "You can continue as a guest - no login needed to complete your order."
+  login_followup: "Having trouble logging in? Use this help link - you can also check out as a guest."
+  oos_similar: "Your size is unavailable right now. Here are similar items in stock."
+  oos_alert: "We will let you know as soon as the {product} is back in stock."
+  tech_retry: "Sorry, something went wrong on this page. Please reload - your cart is saved."
+  tech_followup: "Sorry about the trouble earlier. We are fixing it, and your cart is saved."
+  team_generic: "{action}"

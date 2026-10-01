@@ -1,0 +1,186 @@
+# Synthetic data generator settings (CLAUDE.md §7.1).
+# All randomness flows from `seed`; same config -> byte-identical tables.
+
+seed: 42
+id_hash_salt: "friction-demo-v1"
+start_date: "2026-09-14"   # day 1; day 14 = 2026-09-27
+days: 14
+
+sizes:
+  sessions: 20000
+  users: 2000
+  products: 300
+
+users:
+  new_customer_share: 0.35
+  logged_in_share_returning: 0.70     # returning users already logged in at checkout
+  device_mix: {mobile_web: 0.45, android_app: 0.30, ios_app: 0.10, desktop: 0.15}
+  android_app_versions: {"5.1.0": 0.45, "5.2.0": 0.55}
+  source_mix: {direct: 0.30, organic_search: 0.25, paid_ads: 0.20, social: 0.12, email: 0.08, push: 0.05}
+
+cities:
+  tier_1: [Mumbai, Delhi, Bengaluru, Hyderabad, Chennai, Kolkata, Pune]
+  tier_2: [Ahmedabad, Jaipur, Lucknow, Kochi, Indore, Chandigarh, Coimbatore]
+  tier_3: [Guwahati, Ranchi, Dehradun, Mysuru, Vijayawada, Siliguri]
+  tier_mix: {tier_1: 0.50, tier_2: 0.32, tier_3: 0.18}
+
+couriers:
+  names: [CourierA, CourierB, CourierC, CourierD, CourierE, CourierX]
+  base_eta_days: {tier_1: 2, tier_2: 4, tier_3: 6}
+  extra_days: {CourierA: 0, CourierB: 0, CourierC: 1, CourierD: 1, CourierE: 0, CourierX: 0}
+  primary_share: 0.70                 # share of a city's orders shipped by its primary courier
+  on_time_rate: 0.92
+  express_fee: 99
+
+payments:
+  method_mix: {UPI: 0.46, card: 0.28, netbanking: 0.08, wallet: 0.08, COD: 0.10}
+  gateway_mix: {A: 0.45, B: 0.35, C: 0.20}
+  base_fail_rate: 0.03
+  banks: 8
+
+pricing:
+  free_shipping_threshold: 499
+  shipping_fee: 49
+  cod_fee: 39
+  platform_fee: 9
+  coupons:
+    WELCOME100: {discount: 100, min_cart: 799}
+    FESTIVE20: {discount_pct: 20, min_cart: 1499}
+    SAVE10: {discount_pct: 10, min_cart: 0}
+    FLAT150: {discount: 150, min_cart: 999}
+    FREESHIP: {discount: 49, min_cart: 0}
+
+# Relative traffic by hour of day (IST), 00..23.
+hour_weights: [0.3, 0.2, 0.15, 0.1, 0.1, 0.15, 0.3, 0.5, 0.7, 0.9, 1.0, 1.1,
+               1.3, 1.3, 1.1, 1.0, 1.0, 1.1, 1.3, 1.6, 1.8, 1.8, 1.4, 0.8]
+
+friction:
+  clean_share: 0.40
+  double_share: 0.10          # sessions with two overlapping frictions
+  target_rate_bounds: [0.04, 0.08]
+  weights:                    # relative share of friction sessions per type
+    unclear_product_info: 0.85   # the missing-size incident adds ~1.5 pp on top
+    delivery_uncertainty: 0.95
+    payment_failure: 1.00
+    poor_recommendations: 1.00
+    post_purchase_concern: 1.10
+    price_shock: 0.95
+    coupon_failure: 0.95
+    login_otp_issue: 0.95
+    out_of_stock: 1.00
+    technical_glitch: 0.85
+  variants:                   # behaviour patterns per type (incident-only variants live in scenarios.py)
+    unclear_product_info: {size_chart_loop: 0.25, spec_loop: 0.20, comparison_loop: 0.20, review_scan_exit: 0.15, not_as_described_return: 0.20}
+    delivery_uncertainty: {pincode_recheck: 0.25, long_eta_exit: 0.30, late_fee_reveal: 0.25, arrival_date_chat: 0.20}
+    payment_failure: {upi_timeout: 0.30, card_declined: 0.20, bank_3ds_failure: 0.15, netbanking_down: 0.10, wallet_error: 0.10, money_deducted: 0.15}
+    poor_recommendations: {ignored_recs: 0.30, reformulated_search: 0.30, zero_results: 0.25, oos_recs: 0.15}
+    post_purchase_concern: {wismo_tracking: 0.30, delayed_order: 0.20, cancellation: 0.15, refund_delay: 0.20, quality_issue: 0.15}
+    price_shock: {exit_after_total: 0.35, back_to_cart: 0.25, cod_fee_shock: 0.20, free_shipping_miss: 0.20}
+    coupon_failure: {expired_code: 0.30, min_cart_not_met: 0.30, category_excluded: 0.20, invalid_code: 0.20}
+    login_otp_issue: {login_wall_exit: 0.25, otp_resend_loop: 0.30, otp_failed: 0.20, otp_channel_switch: 0.10, tracking_login_otp: 0.15}
+    out_of_stock: {size_unavailable: 0.35, notify_me_exit: 0.25, alternatives_ignored: 0.20, cart_item_oos: 0.20}
+    technical_glitch: {slow_load_browse: 0.20, dead_click_product: 0.20, rage_click_checkout: 0.20, js_error_payment: 0.15, app_crash_android: 0.15, tracking_page_glitch: 0.10}
+  in_session_recovery:        # chance the decisive friction is overcome and the customer still buys
+    unclear_product_info: 0.20
+    delivery_uncertainty: 0.25
+    payment_failure: 0.30
+    poor_recommendations: 0.15
+    post_purchase_concern: 0.30
+    price_shock: 0.15
+    coupon_failure: 0.35
+    login_otp_issue: 0.25
+    out_of_stock: 0.20
+    technical_glitch: 0.30
+  recovery_propensity:        # used in Phase 8 to simulate response to a recovery action
+    unclear_product_info: 0.25
+    delivery_uncertainty: 0.30
+    payment_failure: 0.45
+    poor_recommendations: 0.15
+    post_purchase_concern: 0.40
+    price_shock: 0.20
+    coupon_failure: 0.35
+    login_otp_issue: 0.40
+    out_of_stock: 0.20
+    technical_glitch: 0.35
+
+clean:
+  post_purchase_share: 0.12   # clean sessions that are routine order-tracking visits
+  bounce_rate: 0.15           # ambiguous exits (no friction) at each step
+  product_exit_rate: 0.20
+  cart_abandon_rate: 0.18
+  checkout_abandon_rate: 0.10
+  noise:                      # sub-threshold signals planted in clean sessions
+    hesitation: 0.15
+    rage_click: 0.04
+    dead_click: 0.05
+    slow_load: 0.06
+    comparison: 0.12
+    single_payment_fail: 0.03
+    single_coupon_fail: 0.05
+    single_otp_resend: 0.06
+    extra_pincode_check: 0.10
+    ignored_recs: 0.20
+
+data_quality:                 # raw-log noise for Phase 2 cleaning
+  duplicate_event_rate: 0.005
+  missing_exit_rate: 0.10
+
+incidents:
+  gateway_outage:
+    id: INC_GATEWAY_B_DAY9
+    gateway: B
+    day: 9
+    start_hour: 19
+    hours: 2
+    fail_rate: 0.85           # share of gateway-B payment sessions in the window that fail
+  courier_delay:
+    id: INC_COURIERX_DAY5_7
+    courier: CourierX
+    cities: [Lucknow, Jaipur, Indore]
+    days: [5, 6, 7]
+    extra_eta_days: 4
+    affect_prob: 0.45         # checkout sessions in scope that hit the long ETA and hesitate
+    order_delay_days: [3, 6]
+    wismo_share: 0.60         # planned post-purchase sessions that pick an incident order when one exists
+  missing_size_info:
+    id: INC_MISSING_SIZE_12
+    n_products: 12
+    pick_prob: 0.30           # planned size/return frictions that land on one of these products
+    affect_prob: 0.35         # shoppers who land on one of these products and get stuck on size
+
+text:
+  hinglish_share: 0.30
+  typo_rate: 0.08
+  multi_theme_rate: 0.08
+  review_rate: 0.25           # delivered orders that get a review
+  ticket_prob:
+    unclear_product_info: 0.06
+    delivery_uncertainty: 0.05
+    payment_failure: 0.10
+    poor_recommendations: 0.04
+    post_purchase_concern: 0.70
+    price_shock: 0.04
+    coupon_failure: 0.10
+    login_otp_issue: 0.12
+    out_of_stock: 0.05
+    technical_glitch: 0.12
+    clean: 0.01
+  chat_prob:
+    unclear_product_info: 0.12
+    delivery_uncertainty: 0.15
+    payment_failure: 0.15
+    poor_recommendations: 0.08
+    post_purchase_concern: 0.25
+    price_shock: 0.08
+    coupon_failure: 0.15
+    login_otp_issue: 0.20
+    out_of_stock: 0.10
+    technical_glitch: 0.12
+    clean: 0.01
+  variant_overrides:          # variants whose text behaviour is part of the pattern
+    money_deducted: {ticket: 0.90}
+    arrival_date_chat: {chat: 1.00}
+    not_as_described_return: {ticket: 0.40, review: 0.60}
+    quality_issue: {review: 0.60}
+    refund_delay: {ticket: 0.85}
+    courier_delay_wismo: {ticket: 0.80}
